@@ -1,0 +1,14 @@
+spring:
+  profiles:
+    active: dev
+server:
+  port:
+    8081
+mybatis:
+  mapper-locations:
+    - classpath:dao/*.xml
+    - classpath*:top/**/mapper.xml
+logging:
+  level:
+    root: info
+    top.tinn: debug

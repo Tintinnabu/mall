@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="top.tinn.portal.dao.PortalOrderDao">
+
+    <resultMap id="orderDetailMap" type="top.tinn.portal.domain.OmsOrderDetail"
+               extends="top.tinn.mapper.OmsOrderMapper.BaseResultMap">
+        <collection property="orderItemList" columnPrefix="ot_"
+                    resultMap="top.tinn.mapper.OmsOrderItemMapper.BaseResultMap"></collection>
+    </resultMap>
+       <!-- * 获取订单及下单商品详情
+        OmsOrderDetail getDetail(@Param("orderId") Long orderId);-->
+    <select id="getDetail" resultMap="orderDetailMap">
+        o.id,
+            o.order_sn,
+            o.coupon_id,
+            o.integration,
+            o.member_id,
+            ot.id ot_id,
+            ot.product_name ot_product_name,
+            ot.product_sku_id ot_product_sku_id,
+            ot.product_sku_code ot_product_sku_code,
+            ot.product_quantity ot_product_quantity
+        FROM
+            oms_order o
+            LEFT JOIN oms_order_item ot ON o.id = ot.order_id
+        WHERE
+            o.id = #{orderId}
+    </select>
+    <!--* 修改 pms_sku_stock表的锁定库存及真实库存
+        int updateSkuStock(@Param("itemList") List<OmsOrderItem> orderItemList);-->
+    <update id="updateSkuStock">
+        UPDATE pms_sku_stock
+        SET
+        stock = CASE id
+        <foreach collection="itemList" item="item">
+            WHEN #{item.productSkuId} THEN stock - #{item.productQuantity}
+        </foreach>
+        END,
+        lock_stock = CASE id
+        <foreach collection="itemList" item="item">
+            WHEN #{item.productSkuId} THEN lock_stock - #{item.productQuantity}
+        </foreach>
+        END
+        WHERE
+        id IN
+        <foreach collection="itemList" item="item" separator="," open="(" close=")">
+            #{item.productSkuId}
+        </foreach>
+    </update>
+    <!--  /**
+    * 获取超时订单
+    * @param minute 超时时间（分）
+    */
+    List<OmsOrderDetail> getTimeOutOrders(@Param("minute") Integer minute);
+-->
+    <select id="getTimeOutOrders" resultMap="orderDetailMap">
+        SELECT
+            o.id,
+            o.order_sn,
+            o.coupon_id,
+            o.integration,
+            o.member_id,
+            o.use_integration,
+            ot.id               ot_id,
+            ot.product_name     ot_product_name,
+            ot.product_sku_id   ot_product_sku_id,
+            ot.product_sku_code ot_product_sku_code,
+            ot.product_quantity ot_product_quantity
+        FROM
+            oms_order o
+            LEFT JOIN oms_order_item ot ON o.id = ot.order_id
+        WHERE
+            o.status = 0
+            AND o.create_time &lt; date_add(NOW(), INTERVAL -#{minute} MINUTE);
+    </select>
+    <!--/**
+    * 批量修改订单状态
+    */
+    int updateOrderStatus(@Param("ids") List<Long> ids,@Param("status") Integer status);
+-->
+    <update id="updateOrderStatus">
+        update oms_order
+        set status=#{status}
+        where id in
+        <foreach collection="ids" item="id" separator="," open="(" close=")">
+            #{id}
+        </foreach>
+    </update>
+<!--
+    * 解除取消订单的库存锁定
+    int releaseSkuStockLock(@Param("itemList") List<OmsOrderItem> orderItemList);
+-->
+    <update id="releaseSkuStockLock">
+        UPDATE pms_sku_stock
+        SET
+        lock_stock = CASE id
+        <foreach collection="itemList" item="item">
+            WHEN #{item.productSkuId} THEN lock_stock - #{item.productQuantity}
+        </foreach>
+        END
+        WHERE
+        id IN
+        <foreach collection="itemList" item="item" separator="," open="(" close=")">
+            #{item.productSkuId}
+        </foreach>
+    </update>
+</mapper>

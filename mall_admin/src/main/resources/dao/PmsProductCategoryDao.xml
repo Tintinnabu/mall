@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="top.tinn.dao.PmsProductCategoryDao">
+    <resultMap id="listWithChildrenMap" type="top.tinn.dto.PmsProductCategoryWithChildrenItem"
+               extends="top.tinn.mapper.PmsProductCategoryMapper.BaseResultMap">
+        <collection property="children" resultMap="top.tinn.mapper.PmsProductCategoryMapper.BaseResultMap"
+                    columnPrefix="child_"></collection>
+    </resultMap>
+    <!--<resultMap id="listWithChildrenMap" type="top.tinn.dto.PmsProductAttributeCategoryItem"
+               extends="top.tinn.mapper.PmsProductCategoryMapper.BaseResultMap">
+        <collection property="productAttributeList" resultMap="top.tinn.mapper.PmsProductCategoryMapper.BaseResultMap" columnPrefix="children_"></collection>
+    </resultMap>-->
+    <select id="listWithChildren" resultMap="listWithChildrenMap">
+        select
+            pc1.id,
+            pc1.name,
+            pc2.id child_id,
+            pc2.name child_name
+        from
+            pms_product_category pc1
+            left join pms_product_category pc2 on pc1.id = pc2.parent_id
+        where pc1.parent_id = 0
+    </select>
+</mapper>
